@@ -1,25 +1,16 @@
 
 #include <cstdio>
 #include "OAuth2.h"
+#include "b64\encode.h"
+#include "b64\decode.h"
+#include <sstream>
 
 using namespace OAuth2CPP;
 using namespace OAuth2CPP::CodeGrant;
-
+using namespace base64;
 
 int main(void)
 {
-
-	string url = "http://", urlk = "abc", urlv = "123";
-
-	HttpURL http(url);
-
-	http.Add(urlk, urlv);
-	http.Add("assdsd", urlv);
-	http.Add("c", "d");
-	
-	string aaa = http.toStr();
-
-	
 
 	Http::USER_AGENT = "Oauth2-dev/0.1";
 

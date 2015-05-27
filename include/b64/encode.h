@@ -9,8 +9,8 @@ For details, see http://sourceforge.net/projects/libb64
 #define BASE64_ENCODE_H
 
 #include <iostream>
+#include "../Utils.h"
 
-#define BUFFERSIZE 65536
 
 namespace base64
 {
@@ -19,7 +19,7 @@ namespace base64
 		#include "cencode.h"
 	}
 
-	struct encoder
+	struct OAUTH2CPP_API encoder
 	{
 		base64_encodestate _state;
 		int _buffersize;

@@ -35,4 +35,7 @@ EXPIMP_TEMPLATE template class OAUTH2CPP_API std::basic_string< char, std::char_
 #define OAUTH2CPP_EXCEPTION_HTTP 2
 
 
+#define BUFFERSIZE 65536
+
+
 #endif /* _UTILS_H_ */

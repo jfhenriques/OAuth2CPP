@@ -9,6 +9,8 @@ For details, see http://sourceforge.net/projects/libb64
 #define BASE64_DECODE_H
 
 #include <iostream>
+#include "../Utils.h"
+
 
 namespace base64
 {
@@ -17,7 +19,7 @@ namespace base64
 		#include "cdecode.h"
 	}
 
-	struct decoder
+	struct OAUTH2CPP_API decoder
 	{
 		base64_decodestate _state;
 		int _buffersize;

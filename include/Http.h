@@ -9,6 +9,7 @@
 #include <string>
 #include <curl/curl.h>
 #include <map>
+#include <vector>
 
 
 using namespace std;
@@ -25,10 +26,10 @@ namespace OAuth2CPP {
 
 	typedef struct OAUTH2CPP_API CurlCTX
 	{
-		CURL* curl;
-		char* memory;
+		CURL* curl = NULL;
+		char* memory = NULL;
 		size_t size;
-		curl_slist* headers;
+		curl_slist* headers = NULL;
 	} CurlCTX;
 
 
@@ -159,7 +160,7 @@ namespace OAuth2CPP {
 		~Http() {};
 
 		void releaseResult(HttpResult* result);
-		HttpResult* Request(HttpURL* url, HttpMethod method, HttpBody *body = NULL);
+		HttpResult* Request(HttpURL* url, HttpMethod method, HttpBody *body = NULL, vector<string> *headers = NULL);
 
 		HttpResult* Get(HttpURL* url);
 		HttpResult* Delete(HttpURL* url, HttpBody *body = NULL);

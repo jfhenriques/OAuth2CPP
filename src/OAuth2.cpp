@@ -1,7 +1,8 @@
 
 #include <cstdio>
 #include "OAuth2.h"
-#include <b64\encode.h>
+#include "b64\encode.h"
+#include "b64\decode.h"
 #include <iostream>
 #include <sstream> 
 #include <rapidjson/document.h>
@@ -47,7 +48,7 @@ namespace OAuth2CPP {
 		stringstream sin, sout;
 		base64::encoder encoder;
 
-		sin << this->clientId << ":" << this->clientSecret << "a";
+		sin << this->clientId << ":" << this->clientSecret;
 		sout << "Authorization: Basic ";
 
 		encoder.encode(sin, sout);

@@ -90,15 +90,19 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="base64_cdecode.c" />
-    <ClCompile Include="base64_cencode.c" />
-    <ClCompile Include="Http.cpp" />
-    <ClCompile Include="OAuth2.cpp" />
+    <ClInclude Include="..\include\b64\cdecode.h" />
+    <ClInclude Include="..\include\b64\cencode.h" />
+    <ClInclude Include="..\include\b64\decode.h" />
+    <ClInclude Include="..\include\b64\encode.h" />
+    <ClInclude Include="..\include\Http.h" />
+    <ClInclude Include="..\include\OAuth2.h" />
+    <ClInclude Include="..\include\Utils.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Http.h" />
-    <ClInclude Include="OAuth2.h" />
-    <ClInclude Include="Utils.h" />
+    <ClCompile Include="..\src\base64_cdecode.c" />
+    <ClCompile Include="..\src\base64_cencode.c" />
+    <ClCompile Include="..\src\Http.cpp" />
+    <ClCompile Include="..\src\OAuth2.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

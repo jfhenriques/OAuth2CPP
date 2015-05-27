@@ -424,11 +424,10 @@ namespace OAuth2CPP {
 
 
 
-	HttpResult* Http::Request(HttpURL* url, HttpMethod method, HttpBody* body)
+	HttpResult* Http::Request(HttpURL* url, HttpMethod method, HttpBody* body, vector<string> *headers)
 	{
 		CurlCTX *ctx = getContext();
 		HttpResult* result = getHttpResult();
-		//curl_slist *slist = NULL;
 		string contentLength;
 
 		if (ctx == NULL || url == NULL || result == NULL)
@@ -464,13 +463,20 @@ namespace OAuth2CPP {
 			{
 				if (method != HttpMethod::M_PUT || body->Size() == 0)
 				{
-					stringstream ss;
-					ss << "Content-Length: " << body->Size();
-					contentLength = ss.str();
+					contentLength = "Content-Length: " + body->Size();
 					ctx->headers = curl_slist_append(ctx->headers, contentLength.c_str());
 				}
 
 				curl_easy_setopt(ctx->curl, CURLOPT_INFILESIZE_LARGE, (curl_off_t)body->Size());
+			}
+		}
+
+		if (headers != NULL && headers->size() > 0)
+		{
+			for (vector<string>::iterator it = headers->begin(); it != headers->end(); it++)
+			{
+				if (it->size() > 0)
+					ctx->headers = curl_slist_append(ctx->headers, it->c_str());
 			}
 		}
 
