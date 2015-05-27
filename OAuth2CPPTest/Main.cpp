@@ -19,27 +19,23 @@ int main(void)
 	
 	string aaa = http.toStr();
 
-
 	
-
-	
-
-
-	OAuth2Factory factory(
-	"https://meocloud.pt/oauth2/authorize",
-	"https://meocloud.pt/oauth2/token",
-	"123456789", "aaaaa");
 
 	Http::USER_AGENT = "Oauth2-dev/0.1";
 
-	AuthorizationBuilder *builder = factory.GetAuthorizationBuilder();
 
+	OAuth2Factory factory(
+			"https://meocloud.pt/oauth2/authorize",
+			"https://meocloud.pt/oauth2/token",
+			"123456789", "aaaaa");
+
+	AuthorizationBuilder *builder = factory.GetAuthorizationBuilder();
 	builder->SetRedirectURI("oob");
 
 	string a = builder->GetUrl();
 
 	
-	AccessTokenRequest *tokenRequest = factory.GetCodeGrantAuthorizationRequestWithAuth("sasdasd", true);
+	AccessTokenRequest *tokenRequest = factory.CodeGrant_GetAuthorizationRequest_WithAuth("sasdasd", true);
 
 	tokenRequest->Execute();
 

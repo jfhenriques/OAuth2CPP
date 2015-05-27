@@ -50,17 +50,20 @@ namespace OAuth2CPP {
 
 		const string clientId;
 		const string clientSecret;
+		const string basicAuth;
 
-		CodeGrant::AccessTokenRequest* getCodeGrantAuthorizationRequest(const string &code, bool sendClientId, bool sendClientSecret, bool isBasicAuth);
+		string computeBasicAuth(void);
+
+		CodeGrant::AccessTokenRequest* codeGrant_GetAuthorizationRequest(const string &code, bool sendClientId, bool sendClientSecret, bool isBasicAuth);
 
 	public:
 		OAuth2Factory(const string &authrorizeEP, const string &accessEP, const string &clientId, const string &clientSecret = "");
 		~OAuth2Factory() {};
 
 		AuthorizationBuilder* GetAuthorizationBuilder();
-		CodeGrant::AccessTokenRequest* GetCodeGrantAuthorizationRequest(const string &code);
-		CodeGrant::AccessTokenRequest* GetCodeGrantAuthorizationRequestWithId(const string &code);
-		CodeGrant::AccessTokenRequest* GetCodeGrantAuthorizationRequestWithAuth(const string &code, bool isBasicAuth = false);
+		CodeGrant::AccessTokenRequest* CodeGrant_GetAuthorizationRequest(const string &code);
+		CodeGrant::AccessTokenRequest* CodeGrant_GetAuthorizationRequest_WithId(const string &code);
+		CodeGrant::AccessTokenRequest* CodeGrant_GetAuthorizationRequest_WithAuth(const string &code, bool isBasicAuth = false);
 
 
 	};
@@ -96,10 +99,6 @@ namespace OAuth2CPP {
 			friend class OAuth2Factory;
 
 		private:
-			const string *clientId = NULL;
-			const string *clientSecret = NULL;
-			string basicAuth;
-
 			vector<string> *headers = NULL;
 			HttpParameters params;
 

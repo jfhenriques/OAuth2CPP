@@ -25,8 +25,13 @@ namespace OAuth2CPP {
 	*
 	********************************************************************************************/
 
+	static string computeBasicAuth()
+	{
+
+	}
+
 	OAuth2Factory::OAuth2Factory(const string &authrorizeEP, const string &accessEP, const string &clientId, const string &clientSecret)
-		: authrorizeEP(authrorizeEP), accessEP(accessEP), clientId(clientId), clientSecret(clientSecret)
+		: authrorizeEP(authrorizeEP), accessEP(accessEP), clientId(clientId), clientSecret(clientSecret), basicAuth(this->computeBasicAuth())
 	{
 	}
 
@@ -34,12 +39,24 @@ namespace OAuth2CPP {
 	{
 		AuthorizationBuilder *builder = new AuthorizationBuilder(*this);
 
-
 		return builder;
 	}
 
+	string OAuth2Factory::computeBasicAuth(void)
+	{
+		stringstream sin, sout;
+		base64::encoder encoder;
 
-	CodeGrant::AccessTokenRequest* OAuth2Factory::getCodeGrantAuthorizationRequest(const string &code, bool sendClientId, bool sendClientSecret, bool isBasicAuth)
+		sin << this->clientId << ":" << this->clientSecret << "a";
+		sout << "Authorization: Basic ";
+
+		encoder.encode(sin, sout);
+
+		return sout.str();
+	}
+
+
+	CodeGrant::AccessTokenRequest* OAuth2Factory::codeGrant_GetAuthorizationRequest(const string &code, bool sendClientId, bool sendClientSecret, bool isBasicAuth)
 	{
 		CodeGrant::AccessTokenRequest* tokenRequest = new CodeGrant::AccessTokenRequest(*this, code, sendClientId, sendClientSecret, isBasicAuth);
 
@@ -47,17 +64,17 @@ namespace OAuth2CPP {
 	}
 
 
-	CodeGrant::AccessTokenRequest* OAuth2Factory::GetCodeGrantAuthorizationRequest(const string &code)
+	CodeGrant::AccessTokenRequest* OAuth2Factory::CodeGrant_GetAuthorizationRequest(const string &code)
 	{
-		return this->getCodeGrantAuthorizationRequest(code, false, false, false);
+		return this->codeGrant_GetAuthorizationRequest(code, false, false, false);
 	}
-	CodeGrant::AccessTokenRequest* OAuth2Factory::GetCodeGrantAuthorizationRequestWithId(const string &code)
+	CodeGrant::AccessTokenRequest* OAuth2Factory::CodeGrant_GetAuthorizationRequest_WithId(const string &code)
 	{
-		return this->getCodeGrantAuthorizationRequest(code, true, false, false);
+		return this->codeGrant_GetAuthorizationRequest(code, true, false, false);
 	}
-	CodeGrant::AccessTokenRequest* OAuth2Factory::GetCodeGrantAuthorizationRequestWithAuth(const string &code, bool isBasicAuth)
+	CodeGrant::AccessTokenRequest* OAuth2Factory::CodeGrant_GetAuthorizationRequest_WithAuth(const string &code, bool isBasicAuth)
 	{
-		return this->getCodeGrantAuthorizationRequest(code, true, true, isBasicAuth);
+		return this->codeGrant_GetAuthorizationRequest(code, true, true, isBasicAuth);
 	}
 
 
@@ -103,7 +120,7 @@ namespace OAuth2CPP {
 
 	/********************************************************************************************
 	*
-	*	AuthorizationBuilder
+	*	CodeGrant::AccessTokenRequest
 	*
 	********************************************************************************************/
 
@@ -111,31 +128,30 @@ namespace OAuth2CPP {
 
 		AccessTokenRequest::AccessTokenRequest(const OAuth2Factory &factory, const string &code, bool sendClientId, bool sendClientSecret, bool isBasicAuth)
 		{
-			this->clientId = sendClientId ? &factory.clientId : NULL;
-			this->clientSecret = (sendClientId && sendClientSecret) ? &factory.clientSecret : NULL;
+			if (!sendClientId || factory.clientId.size() == 0)
+				sendClientId = false;
 
-			if (isBasicAuth && this->clientId != NULL && this->clientSecret != NULL)
-			{
-				stringstream sin, sout;
-				base64::encoder encoder;
+			if (!sendClientId || !sendClientSecret || factory.clientSecret.size() == 0)
+				sendClientSecret = false;
 
-				sin << *this->clientId << ":" << *this->clientSecret << "a";
-				encoder.encode(sin, sout);
+			if (!sendClientSecret || !isBasicAuth || factory.basicAuth.size() == 0)
+				isBasicAuth = false;
 
-		
-				this->basicAuth = sout.str();
-			}
-			else
-			{
-				if ( this->clientId != NULL )
-					this->params.Add(OA2CPP_C_CLIENT_ID, *this->clientId);
-
-				if (this->clientSecret != NULL)
-					this->params.Add(OA2CPP_C_CLIENT_SECRET, *this->clientSecret);
-			}
 
 			this->params.Add(OA2CPP_C_GRANT_TYPE, OA2CPP_C_AUTHORIZATION_CODE);
 			this->params.Add(OA2CPP_C_CODE, code);
+
+			if (isBasicAuth)
+				this->AddGenericHeader(factory.basicAuth);
+
+			else
+			{
+				if (sendClientId)
+					this->params.Add(OA2CPP_C_CLIENT_ID, factory.clientId);
+
+				if (sendClientSecret)
+					this->params.Add(OA2CPP_C_CLIENT_SECRET, factory.clientSecret);
+			}
 		}
 
 		AccessTokenRequest::~AccessTokenRequest()
