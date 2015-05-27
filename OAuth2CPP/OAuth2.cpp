@@ -1,8 +1,9 @@
 
 #include <cstdio>
 #include "OAuth2.h"
-#include "base64.h"
+#include <b64\encode.h>
 #include <iostream>
+#include <sstream> 
 #include <rapidjson/document.h>
 #include <rapidjson/filewritestream.h>
 #include <rapidjson/filereadstream.h>
@@ -37,6 +38,27 @@ namespace OAuth2CPP {
 		return builder;
 	}
 
+
+	CodeGrant::AccessTokenRequest* OAuth2Factory::getCodeGrantAuthorizationRequest(const string &code, bool sendClientId, bool sendClientSecret, bool isBasicAuth)
+	{
+		CodeGrant::AccessTokenRequest* tokenRequest = new CodeGrant::AccessTokenRequest(*this, code, sendClientId, sendClientSecret, isBasicAuth);
+
+		return tokenRequest;
+	}
+
+
+	CodeGrant::AccessTokenRequest* OAuth2Factory::GetCodeGrantAuthorizationRequest(const string &code)
+	{
+		return this->getCodeGrantAuthorizationRequest(code, false, false, false);
+	}
+	CodeGrant::AccessTokenRequest* OAuth2Factory::GetCodeGrantAuthorizationRequestWithId(const string &code)
+	{
+		return this->getCodeGrantAuthorizationRequest(code, true, false, false);
+	}
+	CodeGrant::AccessTokenRequest* OAuth2Factory::GetCodeGrantAuthorizationRequestWithAuth(const string &code, bool isBasicAuth)
+	{
+		return this->getCodeGrantAuthorizationRequest(code, true, true, isBasicAuth);
+	}
 
 
 	/********************************************************************************************
@@ -92,15 +114,28 @@ namespace OAuth2CPP {
 			this->clientId = sendClientId ? &factory.clientId : NULL;
 			this->clientSecret = (sendClientId && sendClientSecret) ? &factory.clientSecret : NULL;
 
-			if (isBasicAuth && this->clientId == NULL || this->clientSecret == NULL)
-				this->basicAuth = NULL;
+			if (isBasicAuth && this->clientId != NULL && this->clientSecret != NULL)
+			{
+				stringstream sin, sout;
+				base64::encoder encoder;
 
+				sin << *this->clientId << ":" << *this->clientSecret << "a";
+				encoder.encode(sin, sout);
+
+		
+				this->basicAuth = sout.str();
+			}
 			else
 			{
-				string auth = *this->clientId + ":" + *this->clientSecret;
+				if ( this->clientId != NULL )
+					this->params.Add(OA2CPP_C_CLIENT_ID, *this->clientId);
 
-				this->basicAuth = &base64_encode(reinterpret_cast<const unsigned char*>(auth.c_str()), auth.length());
+				if (this->clientSecret != NULL)
+					this->params.Add(OA2CPP_C_CLIENT_SECRET, *this->clientSecret);
 			}
+
+			this->params.Add(OA2CPP_C_GRANT_TYPE, OA2CPP_C_AUTHORIZATION_CODE);
+			this->params.Add(OA2CPP_C_CODE, code);
 		}
 
 		AccessTokenRequest::~AccessTokenRequest()
@@ -125,6 +160,11 @@ namespace OAuth2CPP {
 				this->headers = new vector<string>();
 
 			this->headers->push_back(header);
+		}
+
+		void AccessTokenRequest::Execute(void)
+		{
+			string params = this->params.toStr();
 		}
 	}
 

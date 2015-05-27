@@ -53,7 +53,7 @@ namespace OAuth2CPP {
 	{
 		this->checkParamsMap();
 
-		this->params->insert(std::pair<string, string>(key, param));
+		this->params->insert(this->params->end(), std::pair<string, string>(key, param));
 	}
 
 

@@ -90,12 +90,12 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="base64.cpp" />
+    <ClCompile Include="base64_cdecode.c" />
+    <ClCompile Include="base64_cencode.c" />
     <ClCompile Include="Http.cpp" />
     <ClCompile Include="OAuth2.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="base64.h" />
     <ClInclude Include="Http.h" />
     <ClInclude Include="OAuth2.h" />
     <ClInclude Include="Utils.h" />

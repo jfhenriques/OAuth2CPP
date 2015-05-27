@@ -3,6 +3,7 @@
 #include "OAuth2.h"
 
 using namespace OAuth2CPP;
+using namespace OAuth2CPP::CodeGrant;
 
 
 int main(void)
@@ -27,9 +28,9 @@ int main(void)
 	OAuth2Factory factory(
 	"https://meocloud.pt/oauth2/authorize",
 	"https://meocloud.pt/oauth2/token",
-	"123456789");
+	"123456789", "aaaaa");
 
-	Http::USER_AGENT = "Http::USER_AGENT";
+	Http::USER_AGENT = "Oauth2-dev/0.1";
 
 	AuthorizationBuilder *builder = factory.GetAuthorizationBuilder();
 
@@ -37,9 +38,14 @@ int main(void)
 
 	string a = builder->GetUrl();
 
+	
+	AccessTokenRequest *tokenRequest = factory.GetCodeGrantAuthorizationRequestWithAuth("sasdasd", true);
+
+	tokenRequest->Execute();
 
 
 	delete builder;
+	delete tokenRequest;
 
 	return 0;
 }
