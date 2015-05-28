@@ -17,6 +17,8 @@
 //
 //#include <string>
 
+#define CURL_STATICLIB
+
 
 #ifdef OAUTH2CPP_EXPORT
 #   define OAUTH2CPP_API   __declspec(dllexport)
