@@ -67,13 +67,13 @@ namespace OAuth2CPP {
 
 	public:
 		HttpParameters() {};
-		HttpParameters(const string &url);
+		HttpParameters(c_string_ref url);
 		~HttpParameters();
 
-		void Add(const string &key, const string &param);
-		void Add(const char *key, const string &param);
-		void Add(const char *key, const char *param);
-		void SetUrl(const string &url);
+		void Add(c_string_ref key, c_string_ref param);
+		void Add(c_char_ptr key, c_string_ref param);
+		void Add(c_char_ptr key, c_char_ptr param);
+		void SetUrl(c_string_ref url);
 		void SetCTX(CurlCTX *ctx);
 
 		string toStr();
@@ -86,6 +86,9 @@ namespace OAuth2CPP {
 
 
 	class OAUTH2CPP_API HttpBody {
+	protected:
+		~HttpBody()  {};
+
 	public:
 		virtual bool IsChunked() = 0;
 		virtual bool HasSize() = 0;
@@ -137,7 +140,10 @@ namespace OAuth2CPP {
 		URLEncodedHttpBody();
 		~URLEncodedHttpBody();
 
-		void AddParam(const string &key, const string &value);
+		void AddParam(c_string_ref key, c_string_ref value);
+		void AddParam(c_char_ptr key, c_string_ref value);
+		void AddParam(c_char_ptr key, c_char_ptr value);
+
 		void Prepare(CurlCTX *ctx = NULL);
 
 		bool IsChunked();
@@ -148,7 +154,7 @@ namespace OAuth2CPP {
 
 
 
-	class OAUTH2CPP_API Http {
+	class OAUTH2CPP_API Http final {
 
 	private:
 		static bool debug;
@@ -156,22 +162,37 @@ namespace OAuth2CPP {
 	public:
 		static string USER_AGENT;
 		
+	private:
 		Http() {};
+		Http(const Http&) = delete;
+		Http& operator=(const Http&) = delete;
+
+	public:
 		~Http() {};
 
+	private:
+		HttpResult* Request(HttpURL *url, c_string* urlStr, HttpMethod method, HttpBody *body = NULL, vector<string> *headers = NULL);
+
+	public:
+
 		void releaseResult(HttpResult* result);
-		HttpResult* Request(HttpURL* url, HttpMethod method, HttpBody *body = NULL, vector<string> *headers = NULL);
 
 		HttpResult* Get(HttpURL* url);
 		HttpResult* Delete(HttpURL* url, HttpBody *body = NULL);
 		HttpResult* Put(HttpURL* url, HttpBody *body = NULL);
 		HttpResult* Post(HttpURL* url, HttpBody *body = NULL);
 
+		HttpResult* Request(HttpURL *url, HttpMethod method, HttpBody *body = NULL, vector<string> *headers = NULL);
+		HttpResult* Request(c_string* url, HttpMethod method, HttpBody *body = NULL, vector<string> *headers = NULL);
+
+
+
 		static void Init(void);
 		static void Terminate(void);
 
 		static void SetDebug(bool debug);
 
+		static Http* GetInstance(void);
 	};
 
 

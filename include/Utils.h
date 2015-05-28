@@ -38,4 +38,9 @@ EXPIMP_TEMPLATE template class OAUTH2CPP_API std::basic_string< char, std::char_
 #define BUFFERSIZE 65536
 
 
+typedef const char* c_char_ptr;
+typedef const std::string c_string;
+typedef const std::string& c_string_ref;
+
+
 #endif /* _UTILS_H_ */

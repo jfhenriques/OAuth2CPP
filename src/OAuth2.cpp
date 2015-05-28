@@ -31,7 +31,7 @@ namespace OAuth2CPP {
 
 	}
 
-	OAuth2Factory::OAuth2Factory(const string &authrorizeEP, const string &accessEP, const string &clientId, const string &clientSecret)
+	OAuth2Factory::OAuth2Factory(c_string_ref authrorizeEP, c_string_ref accessEP, c_string_ref clientId, c_string_ref clientSecret)
 		: authrorizeEP(authrorizeEP), accessEP(accessEP), clientId(clientId), clientSecret(clientSecret), basicAuth(this->computeBasicAuth())
 	{
 	}
@@ -57,25 +57,11 @@ namespace OAuth2CPP {
 	}
 
 
-	CodeGrant::AccessTokenRequest* OAuth2Factory::codeGrant_GetAuthorizationRequest(const string &code, bool sendClientId, bool sendClientSecret, bool isBasicAuth)
+	CodeGrant::AccessTokenRequest* OAuth2Factory::CodeGrant_GetAuthorizationRequest(CodeGrant::AuthenticationType type, c_string_ref code)
 	{
-		CodeGrant::AccessTokenRequest* tokenRequest = new CodeGrant::AccessTokenRequest(*this, code, sendClientId, sendClientSecret, isBasicAuth);
+		CodeGrant::AccessTokenRequest* tokenRequest = new CodeGrant::AccessTokenRequest(*this, type, code);
 
 		return tokenRequest;
-	}
-
-
-	CodeGrant::AccessTokenRequest* OAuth2Factory::CodeGrant_GetAuthorizationRequest(const string &code)
-	{
-		return this->codeGrant_GetAuthorizationRequest(code, false, false, false);
-	}
-	CodeGrant::AccessTokenRequest* OAuth2Factory::CodeGrant_GetAuthorizationRequest_WithId(const string &code)
-	{
-		return this->codeGrant_GetAuthorizationRequest(code, true, false, false);
-	}
-	CodeGrant::AccessTokenRequest* OAuth2Factory::CodeGrant_GetAuthorizationRequest_WithAuth(const string &code, bool isBasicAuth)
-	{
-		return this->codeGrant_GetAuthorizationRequest(code, true, true, isBasicAuth);
 	}
 
 
@@ -92,21 +78,21 @@ namespace OAuth2CPP {
 		this->url.Add(OA2CPP_C_CLIENT_ID, factory.clientId);
 	}
 
-	void AuthorizationBuilder::AddGenericVar(const string &key, const string &value)
+	void AuthorizationBuilder::AddGenericVar(c_string_ref key, c_string_ref value)
 	{
 		this->url.Add(key, value);
 	}
 
 
-	void AuthorizationBuilder::SetRedirectURI(const string &uri)
+	void AuthorizationBuilder::SetRedirectURI(c_string_ref uri)
 	{
 		this->url.Add(OA2CPP_C_REDIRECT_URI, uri);
 	}
-	void AuthorizationBuilder::SetScope(const string &scope)
+	void AuthorizationBuilder::SetScope(c_string_ref scope)
 	{
 		this->url.Add(OA2CPP_C_SCOPE, scope);
 	}
-	void AuthorizationBuilder::SetState(const string &state)
+	void AuthorizationBuilder::SetState(c_string_ref state)
 	{
 		this->url.Add(OA2CPP_C_STATE, state);
 	}
@@ -121,68 +107,145 @@ namespace OAuth2CPP {
 
 	/********************************************************************************************
 	*
+	*	BaseAccessTokenRequest
+	*
+	********************************************************************************************/
+
+	BaseAccessTokenRequest::BaseAccessTokenRequest(const OAuth2Factory &factory)
+	{
+		this->factory = &factory;
+	}
+
+	BaseAccessTokenRequest::~BaseAccessTokenRequest()
+	{
+		if (this->headers != NULL)
+			delete this->headers;
+	}
+
+	void BaseAccessTokenRequest::AddHeader(c_string_ref header)
+	{
+		if (this->headers == NULL)
+			this->headers = new vector<string>();
+
+		this->headers->push_back(header);
+	}
+
+	int BaseAccessTokenRequest::Ececute(void)
+	{
+		int outCode = -1;
+		Http *httpClient = Http::GetInstance();
+		HttpResult* result = httpClient->Request(&factory->accessEP, HttpMethod::M_POST, this->body == NULL ? new EmptyHttpBody() : this->body, this->headers);
+		
+
+		if (result != NULL && result->IsCurlResponseOK())
+		{
+			outCode = result->statusCode;
+
+			if (result->statusCode == 200)
+			{
+				Document doc;
+				doc.Parse(result->ctx->memory);
+
+				if (doc.IsObject())
+				{
+				}
+			}
+		}
+
+		httpClient->releaseResult(result);
+
+		return outCode;
+	}
+
+
+
+	/********************************************************************************************
+	*
 	*	CodeGrant::AccessTokenRequest
 	*
 	********************************************************************************************/
 
 	namespace CodeGrant {
 
-		AccessTokenRequest::AccessTokenRequest(const OAuth2Factory &factory, const string &code, bool sendClientId, bool sendClientSecret, bool isBasicAuth)
+		AccessTokenRequest::AccessTokenRequest(const OAuth2Factory &factory, AuthenticationType authType, c_string_ref code)
+			: BaseAccessTokenRequest(factory)
 		{
-			if (!sendClientId || factory.clientId.size() == 0)
-				sendClientId = false;
-
-			if (!sendClientId || !sendClientSecret || factory.clientSecret.size() == 0)
-				sendClientSecret = false;
-
-			if (!sendClientSecret || !isBasicAuth || factory.basicAuth.size() == 0)
-				isBasicAuth = false;
-
-
-			this->params.Add(OA2CPP_C_GRANT_TYPE, OA2CPP_C_AUTHORIZATION_CODE);
-			this->params.Add(OA2CPP_C_CODE, code);
-
-			if (isBasicAuth)
-				this->AddGenericHeader(factory.basicAuth);
-
-			else
+			// validate
+			switch (authType)
 			{
-				if (sendClientId)
-					this->params.Add(OA2CPP_C_CLIENT_ID, factory.clientId);
+			case AuthenticationType::CLIENT_ID_AND_SECRET_BASIC_AUTH:
+				if (factory.basicAuth.size() == 0)
+					authType = AuthenticationType::CLIENT_ID_AND_SECRET;
 
-				if (sendClientSecret)
-					this->params.Add(OA2CPP_C_CLIENT_SECRET, factory.clientSecret);
+				// fall-through
+			case AuthenticationType::CLIENT_ID_AND_SECRET:
+				if (factory.clientSecret.size() == 0)
+					authType = AuthenticationType::CLIENT_ID;
+
+				// fall-through
+			case AuthenticationType::CLIENT_ID:
+				if (factory.clientId.size() == 0)
+					authType = AuthenticationType::NONE;
+			}
+
+			this->urlEncBody = new URLEncodedHttpBody();
+			this->body = this->urlEncBody;
+
+			this->urlEncBody->AddParam(OA2CPP_C_GRANT_TYPE, OA2CPP_C_AUTHORIZATION_CODE);
+			this->urlEncBody->AddParam(OA2CPP_C_CODE, code);
+
+			switch (authType)
+			{
+			case AuthenticationType::CLIENT_ID_AND_SECRET_BASIC_AUTH:
+				this->AddHeader(factory.basicAuth);
+				break;
+
+			case AuthenticationType::CLIENT_ID_AND_SECRET:
+				this->urlEncBody->AddParam(OA2CPP_C_CLIENT_SECRET, factory.clientSecret);
+				
+				// fall-through
+			case AuthenticationType::CLIENT_ID:
+				this->urlEncBody->AddParam(OA2CPP_C_CLIENT_ID, factory.clientId);
+				break;
+			}
+		}
+	
+		AccessTokenRequest::~AccessTokenRequest()
+		{
+			if (this->urlEncBody != NULL)
+			{
+				delete this->urlEncBody;
+				this->urlEncBody = NULL;
+				this->body = NULL;
 			}
 		}
 
-		AccessTokenRequest::~AccessTokenRequest()
+		void AccessTokenRequest::SetRedirectURI(c_string_ref uri)
 		{
-			if (this->headers != NULL)
-				delete this->headers;
-		}
-	
-
-		void AccessTokenRequest::SetRedirectURI(const string &uri)
-		{
-			this->params.Add(OA2CPP_C_REDIRECT_URI, uri);
+			this->urlEncBody->AddParam(OA2CPP_C_REDIRECT_URI, uri);
 		}
 
-		void AccessTokenRequest::AddGenericVar(const string &key, const string &value)
-		{
-			this->params.Add(key, value);
-		}
-		void AccessTokenRequest::AddGenericHeader(const string &header)
-		{
-			if (this->headers == NULL)
-				this->headers = new vector<string>();
 
-			this->headers->push_back(header);
+		void AccessTokenRequest::AddVar(c_string_ref key, c_string_ref value)
+		{
+			this->urlEncBody->AddParam(key, value);
 		}
 
-		void AccessTokenRequest::Execute(void)
+		void AccessTokenRequest::AddVar(c_char_ptr key, c_string_ref value)
 		{
-			string params = this->params.toStr();
+			this->urlEncBody->AddParam(key, value);
 		}
+
+		void AccessTokenRequest::AddVar(c_char_ptr key, c_char_ptr value)
+		{
+			this->urlEncBody->AddParam(key, value);
+		}
+
+
+		//void AccessTokenRequest::Execute(void)
+		//{
+		//	//string params = this->urlEncBody.toStr();
+		//}
 	}
 
 }

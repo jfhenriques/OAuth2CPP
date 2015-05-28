@@ -26,7 +26,19 @@ using namespace std;
 
 namespace OAuth2CPP {
 
-	namespace CodeGrant { class AccessTokenRequest; }
+	namespace CodeGrant {
+		class AccessTokenRequest;
+
+		typedef enum OAUTH2CPP_API AuthenticationType AuthenticationType;
+		//typedef enum OAUTH2CPP_API {
+		//	NONE = 0,
+		//	CLIENT_ID,
+		//	CLIENT_ID_AND_SECRET,
+		//	CLIENT_ID_AND_SECRET_BASIC_AUTH
+		//} AuthenticationType;
+	};
+
+	class AuthorizationBuilder;
 
 
 	typedef struct OAUTH2CPP_API APITokens
@@ -41,31 +53,28 @@ namespace OAuth2CPP {
 
 
 	class OAUTH2CPP_API OAuth2Factory {
-		friend class AuthorizationBuilder;
-		friend class CodeGrant::AccessTokenRequest;
 
-	private:
+	public:
 		const string authrorizeEP;
 		const string accessEP;
 
 		const string clientId;
 		const string clientSecret;
 		const string basicAuth;
+		
 
-		string computeBasicAuth(void);
-
-		CodeGrant::AccessTokenRequest* codeGrant_GetAuthorizationRequest(const string &code, bool sendClientId, bool sendClientSecret, bool isBasicAuth);
 
 	public:
-		OAuth2Factory(const string &authrorizeEP, const string &accessEP, const string &clientId, const string &clientSecret = "");
+		OAuth2Factory(c_string_ref authrorizeEP, c_string_ref accessEP, c_string_ref clientId, c_string_ref clientSecret = "");
 		~OAuth2Factory() {};
 
+	private:
+		string computeBasicAuth(void);
+
+	public:
+
 		AuthorizationBuilder* GetAuthorizationBuilder();
-		CodeGrant::AccessTokenRequest* CodeGrant_GetAuthorizationRequest(const string &code);
-		CodeGrant::AccessTokenRequest* CodeGrant_GetAuthorizationRequest_WithId(const string &code);
-		CodeGrant::AccessTokenRequest* CodeGrant_GetAuthorizationRequest_WithAuth(const string &code, bool isBasicAuth = false);
-
-
+		CodeGrant::AccessTokenRequest* CodeGrant_GetAuthorizationRequest(CodeGrant::AuthenticationType type, c_string_ref code);
 	};
 
 
@@ -82,38 +91,68 @@ namespace OAuth2CPP {
 	public:
 		~AuthorizationBuilder() {};
 
-		void SetRedirectURI(const string &uri);
-		void SetScope(const string &scope);
-		void SetState(const string &state);
+		void SetRedirectURI(c_string_ref uri);
+		void SetScope(c_string_ref scope);
+		void SetState(c_string_ref state);
 
-		void AddGenericVar(const string &key, const string &value);
+		void AddGenericVar(c_string_ref key, c_string_ref value);
 
 		string GetUrl(void);
 	};
 
 
 
+	class OAUTH2CPP_API BaseAccessTokenRequest {
+	
+	protected:
+		const OAuth2Factory *factory = NULL;
+		HttpBody *body = NULL;
+		vector<string> *headers = NULL;
+
+		BaseAccessTokenRequest(const OAuth2Factory &factory);
+		~BaseAccessTokenRequest();
+
+	public:
+
+		virtual void AddVar(c_string_ref key, c_string_ref value) = 0;
+		virtual void AddVar(c_char_ptr key, c_string_ref value) = 0;
+		virtual void AddVar(c_char_ptr key, c_char_ptr value) = 0;
+
+		virtual void AddHeader(c_string_ref header);
+
+		int Ececute(void);
+	};
+
+
+
 	namespace CodeGrant {
 
-		class OAUTH2CPP_API AccessTokenRequest {
+		enum AuthenticationType {
+			NONE = 0,
+			CLIENT_ID,
+			CLIENT_ID_AND_SECRET,
+			CLIENT_ID_AND_SECRET_BASIC_AUTH
+		};
+
+		class OAUTH2CPP_API AccessTokenRequest final : public BaseAccessTokenRequest {
 			friend class OAuth2Factory;
 
 		private:
-			vector<string> *headers = NULL;
-			HttpParameters params;
+			URLEncodedHttpBody *urlEncBody;
 
 		private:
-			AccessTokenRequest(const OAuth2Factory &factory, const string &code, bool sendClientId = true, bool sendClientSecret = true, bool isBasicAuth = false);
+			AccessTokenRequest(const OAuth2Factory &factory, AuthenticationType authType, c_string_ref code);
 
 		public:
 			~AccessTokenRequest();
 
-			void SetRedirectURI(const string &uri);
+			void SetRedirectURI(c_string_ref uri);
 
-			void AddGenericVar(const string &key, const string &value);
-			void AddGenericHeader(const string &header);
+			void AddVar(c_string_ref key, c_string_ref value);
+			void AddVar(c_char_ptr key, c_string_ref value);
+			void AddVar(c_char_ptr key, c_char_ptr value);
 
-			void Execute(void);
+			//void Execute(void);
 
 		};
 	}

@@ -19,7 +19,7 @@ namespace OAuth2CPP {
 	********************************************************************************************/
 
 
-	HttpParameters::HttpParameters(const string &url)
+	HttpParameters::HttpParameters(c_string_ref url)
 	{
 		this->url = url;
 	}
@@ -37,19 +37,19 @@ namespace OAuth2CPP {
 			this->params = new std::map<string, string>();
 	}
 
-	void HttpParameters::Add(const string &key, const string &param)
+	void HttpParameters::Add(c_string_ref key, c_string_ref param)
 	{
 		this->checkParamsMap();
 
 		this->params->insert(std::pair<string, string>(key, param));
 	}
-	void HttpParameters::Add(const char *key, const string &param)
+	void HttpParameters::Add(c_char_ptr key, c_string_ref param)
 	{
 		this->checkParamsMap();
 
 		this->params->insert(std::pair<string, string>(key, param));
 	}
-	void HttpParameters::Add(const char *key, const char *param)
+	void HttpParameters::Add(c_char_ptr key, c_char_ptr param)
 	{
 		this->checkParamsMap();
 
@@ -57,14 +57,13 @@ namespace OAuth2CPP {
 	}
 
 
-	void HttpParameters::SetUrl(const string &url)
+	void HttpParameters::SetUrl(c_string_ref url)
 	{
 		this->url = url;
 	}
 	void HttpParameters::SetCTX(CurlCTX *ctx)
 	{
-		if (ctx != NULL)
-			this->ctx = ctx;
+		this->ctx = ctx;
 	}
 
 	string HttpParameters::toStr()
@@ -249,7 +248,15 @@ namespace OAuth2CPP {
 	}
 
 
-	void URLEncodedHttpBody::AddParam(const string &key, const string &value)
+	void URLEncodedHttpBody::AddParam(c_string_ref key, c_string_ref value)
+	{
+		this->params.Add(key, value);
+	}
+	void URLEncodedHttpBody::AddParam(c_char_ptr key, c_string_ref value)
+	{
+		this->params.Add(key, value);
+	}
+	void URLEncodedHttpBody::AddParam(c_char_ptr key, c_char_ptr value)
 	{
 		this->params.Add(key, value);
 	}
@@ -263,7 +270,7 @@ namespace OAuth2CPP {
 			this->data = NULL;
 			this->size = 0;
 			this->readPtr = 0;
-			this->tmpData.clear();
+			this->tmpData = string();
 		}
 
 		this->params.SetCTX(ctx);
@@ -326,6 +333,9 @@ namespace OAuth2CPP {
 	********************************************************************************************/
 
 	string Http::USER_AGENT = "OAuth2CPP/1.0";
+	bool Http::debug = false;
+
+
 
 	static HttpResult* getHttpResult()
 	{
@@ -406,32 +416,47 @@ namespace OAuth2CPP {
 
 	HttpResult* Http::Get(HttpURL* url)
 	{
-		return this->Request(url, HttpMethod::M_GET, NULL);
+		return this->Request(url, NULL, HttpMethod::M_GET, NULL);
 	}
 	HttpResult* Http::Put(HttpURL* url, HttpBody* body)
 	{
-		return this->Request(url, HttpMethod::M_PUT, body);
+		return this->Request(url, NULL, HttpMethod::M_PUT, body);
 	}
 	HttpResult* Http::Post(HttpURL* url, HttpBody* body)
 	{
-		return this->Request(url, HttpMethod::M_POST, body);
+		return this->Request(url, NULL, HttpMethod::M_POST, body);
 	}
 	HttpResult* Http::Delete(HttpURL* url, HttpBody* body)
 	{
-		return this->Request(url, HttpMethod::M_DELETE, body);
+		return this->Request(url, NULL, HttpMethod::M_DELETE, body);
+	}
+
+	HttpResult* Http::Request(HttpURL* url, HttpMethod method, HttpBody *body, vector<string> *headers)
+	{
+		return this->Request(url, NULL, method, body, headers);
+	}
+
+	HttpResult* Http::Request(c_string*  url, HttpMethod method, HttpBody *body, vector<string> *headers)
+	{
+		return this->Request(NULL, url, method, body, headers);
 	}
 
 
 
 
-	HttpResult* Http::Request(HttpURL* url, HttpMethod method, HttpBody* body, vector<string> *headers)
+	HttpResult* Http::Request(HttpURL* url, c_string* urlStr, HttpMethod method, HttpBody* body, vector<string> *headers)
 	{
 		CurlCTX *ctx = getContext();
 		HttpResult* result = getHttpResult();
 		string contentLength;
 
-		if (ctx == NULL || url == NULL || result == NULL)
+		if (ctx == NULL || result == NULL || (url == NULL && urlStr == NULL))
+		{
+			if (result != NULL)
+				this->releaseResult(result);
+
 			throw OAUTH2CPP_EXCEPTION_HTTP;
+		}
 
 		result->ctx = ctx;
 
@@ -498,9 +523,18 @@ namespace OAuth2CPP {
 			break;
 		}
 
+		if (url != NULL)
+		{
+			url->SetCTX(ctx);
 
-		url->SetCTX(ctx);
-		result->url = url->toStr();
+			result->url = url->toStr();
+			
+			url->SetCTX(NULL);
+		}
+		else if (urlStr != NULL)
+		{
+			result->url = *urlStr;
+		}
 
 		// set url
 		curl_easy_setopt(ctx->curl, CURLOPT_URL, result->url.c_str());
@@ -531,9 +565,9 @@ namespace OAuth2CPP {
 		return result;
 	}
 
-	// statics
 
-	bool Http::debug = false;
+
+	// statics
 
 	void Http::Init(void)
 	{
@@ -547,7 +581,11 @@ namespace OAuth2CPP {
 	{
 		Http::debug = debug;
 	}
-
+	Http* Http::GetInstance(void)
+	{
+		static Http instance;
+		return &instance;
+	}
 
 
 
