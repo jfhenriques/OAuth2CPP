@@ -467,7 +467,7 @@ namespace OAuth2CPP {
 		curl_easy_setopt(ctx->curl, CURLOPT_WRITEDATA, (void *)ctx);
 
 		//curl_easy_setopt(ctx->curl, CURLOPT_VERBOSE, 1L);
-		curl_easy_setopt(ctx->curl, CURLOPT_USERAGENT, Http::USER_AGENT);
+		curl_easy_setopt(ctx->curl, CURLOPT_USERAGENT, Http::USER_AGENT.c_str());
 
 		//ctx->headers = curl_slist_append(ctx->headers, "Expect:"); 
 

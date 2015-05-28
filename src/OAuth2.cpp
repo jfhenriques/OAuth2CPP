@@ -141,12 +141,12 @@ namespace OAuth2CPP {
 		{
 			outCode = result->statusCode;
 
-			if (result->statusCode == 200)
-			{
-				Document doc;
-				doc.Parse(result->ctx->memory);
+			Document doc;
+			doc.Parse(result->ctx->memory);
 
-				if (doc.IsObject())
+			if (doc.IsObject())
+			{
+				if (result->statusCode == 200)
 				{
 				}
 			}
