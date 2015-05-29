@@ -26,24 +26,41 @@ using namespace std;
 #define OA2CPP_C_TOKEN_TYPE			"token_type"
 #define OA2CPP_C_EXPIRES_IN			"expires_in"
 #define OA2CPP_C_RESPONSE_TYPE		"response_type"
+#define OA2CPP_C_AUTH_BASIC			"Authorization: Basic "
+#define OA2CPP_C_AUTH_BEARER		"Authorization: Bearer "
+
 
 
 
 namespace OAuth2CPP {
 
+	// Early definitions
+
 	namespace CodeGrant {
 		class AccessTokenRequest;
 
-		typedef enum OAUTH2CPP_API AuthenticationType AuthenticationType;
-		//typedef enum OAUTH2CPP_API {
-		//	NONE = 0,
-		//	CLIENT_ID,
-		//	CLIENT_ID_AND_SECRET,
-		//	CLIENT_ID_AND_SECRET_BASIC_AUTH
-		//} AuthenticationType;
+		enum AuthenticationType;
+
+		typedef enum OAUTH2CPP_API AuthenticationType {
+			NONE = 0,
+			CLIENT_ID,
+			CLIENT_ID_AND_SECRET,
+			CLIENT_ID_AND_SECRET_BASIC_AUTH
+		} AuthenticationType;
 	};
 
+	namespace Request {
+		class HttpRequest;
+
+		typedef enum OAUTH2CPP_API AuthenticationType {
+			URI = 0,
+			HEADER
+		} AuthenticationType;
+	}
+
 	class AuthorizationBuilder;
+
+	// End Early definitions
 
 
 	typedef struct OAUTH2CPP_API APITokens
@@ -79,7 +96,8 @@ namespace OAuth2CPP {
 	public:
 
 		AuthorizationBuilder* GetAuthorizationBuilder();
-		CodeGrant::AccessTokenRequest* CodeGrant_GetAuthorizationRequest(CodeGrant::AuthenticationType type, c_string_ref code);
+		CodeGrant::AccessTokenRequest* CodeGrant_GetAuthorizationRequest(c_string_ref code, CodeGrant::AuthenticationType type = CodeGrant::AuthenticationType::NONE);
+		Request::HttpRequest* GetHttpRequest(APITokens &tokens, Request::AuthenticationType type = Request::AuthenticationType::HEADER);
 
 		static void ReleaseDocument(rapidjson::Document *doc);
 	};
@@ -90,7 +108,7 @@ namespace OAuth2CPP {
 		friend class OAuth2Factory;
 
 	private:
-		HttpURL url;
+		Core::HttpURL url;
 
 	private:
 		AuthorizationBuilder(const OAuth2Factory &factory);
@@ -123,19 +141,19 @@ namespace OAuth2CPP {
 		E_OTHER
 	} AuthorizationResponse;
 
+
 	class OAUTH2CPP_API BaseAccessTokenRequest {
 	
 	protected:
 		const OAuth2Factory *factory = NULL;
-		HttpBody *body = NULL;
-		HttpURL *url = NULL;
+		Core::HttpBody *body = NULL;
+		Core::HttpURL *url = NULL;
 		vector<string> *headers = NULL;
 
 		BaseAccessTokenRequest(const OAuth2Factory &factory);
 		~BaseAccessTokenRequest();
 
 	public:
-
 		virtual void AddVar(c_string_ref key, c_string_ref value) = 0;
 		virtual void AddVar(c_char_ptr key, c_string_ref value) = 0;
 		virtual void AddVar(c_char_ptr key, c_char_ptr value) = 0;
@@ -149,22 +167,14 @@ namespace OAuth2CPP {
 
 	namespace CodeGrant {
 
-		enum AuthenticationType {
-			NONE = 0,
-			CLIENT_ID,
-			CLIENT_ID_AND_SECRET,
-			CLIENT_ID_AND_SECRET_BASIC_AUTH
-		};
-
 		class OAUTH2CPP_API AccessTokenRequest final : public BaseAccessTokenRequest {
 			friend class OAuth2Factory;
 
 		private:
-			URLEncodedHttpBody *urlEncBody = NULL;
-			//HttpURL *urlEncBody = NULL;
+			Core::URLEncodedHttpBody *urlEncBody = NULL;
 
 		private:
-			AccessTokenRequest(const OAuth2Factory &factory, AuthenticationType authType, c_string_ref code, bool isRefreshToken = false);
+			AccessTokenRequest(const OAuth2Factory &factory, c_string_ref code, AuthenticationType authType, bool isRefreshToken = false);
 
 		public:
 			~AccessTokenRequest();
@@ -177,6 +187,35 @@ namespace OAuth2CPP {
 			void AddVar(c_char_ptr key, c_char_ptr value);
 
 			static void ReleaseAccessTokenRequest(AccessTokenRequest* request);
+
+		};
+	}
+
+	namespace Request {
+
+		using namespace OAuth2CPP::Core;
+
+		class OAUTH2CPP_API HttpRequest {
+			friend class OAuth2Factory;
+
+		private:
+			vector<string> *headers = NULL;
+			APITokens *tokens = NULL;
+			AuthenticationType authType;
+
+		private:
+			HttpRequest(const OAuth2Factory &factory, APITokens &tokens, AuthenticationType type = AuthenticationType::URI);
+
+		public:
+			~HttpRequest();
+
+			HttpResult* Request(HttpURL &url, HttpMethod method = HttpMethod::M_GET, HttpBody *body = NULL);
+			HttpResult* Request(c_string_ref &url, HttpMethod method = HttpMethod::M_GET, HttpBody *body = NULL);
+
+			void AddHeader(c_string_ref header);
+
+			static void ReleaseHttpRequest(HttpRequest *request);
+			static void ReleaseHttpResult(HttpResult *request);
 
 		};
 	}

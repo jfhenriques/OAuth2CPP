@@ -8,7 +8,9 @@
 #include <rapidjson\document.h>
 
 using namespace OAuth2CPP;
+using namespace OAuth2CPP::Core;
 using namespace OAuth2CPP::CodeGrant;
+using namespace OAuth2CPP::Request;
 using namespace base64;
 using namespace rapidjson;
 
@@ -23,8 +25,8 @@ int main(void)
 	OAuth2Factory factory(
 			"https://meocloud.pt/oauth2/authorize",
 			"https://meocloud.pt/oauth2/token",
-			"aaa",
-			"bbb");
+			"abc",
+			"def");
 
 	AuthorizationBuilder *builder = factory.GetAuthorizationBuilder();
 	//builder->SetRedirectURI("oob");
@@ -38,17 +40,31 @@ int main(void)
 	APITokens tokens;
 	rapidjson::Document *json = NULL;
 
-	string authcode = "abc";
+	string authcode = "345";
 	
-	AccessTokenRequest *tokenRequest = factory.CodeGrant_GetAuthorizationRequest(AuthenticationType::CLIENT_ID_AND_SECRET_BASIC_AUTH, authcode);
+	//AccessTokenRequest *tokenRequest = factory.CodeGrant_GetAuthorizationRequest(authcode, AuthenticationType::CLIENT_ID_AND_SECRET_BASIC_AUTH);
 
-	tokenRequest->SetRedirectURI("oob");
+	//tokenRequest->SetRedirectURI("oob");
 
-	AuthorizationResponse response = tokenRequest->Execute(tokens, &json);
+	//AuthorizationResponse response = tokenRequest->Execute(tokens, &json);
+
+	//cout << OA2CPP_C_ACCESS_TOKEN << ":" << tokens.access_token << endl;
+	//cout << OA2CPP_C_REFRESH_TOKEN << ":" << tokens.refresh_token << endl;
+	//cout << OA2CPP_C_TOKEN_TYPE << ":" << tokens.token_type << endl;
+	//cout << OA2CPP_C_EXPIRES_IN << ":" << tokens.expires_in << endl;
+
+	APITokens tokenss;
+
+	HttpRequest *request = factory.GetHttpRequest(tokenss);
+
+	HttpResult *result = request->Request("https://publicapi.meocloud.pt/1/Account/Info");
+
+	HttpRequest::ReleaseHttpResult(result);
+	HttpRequest::ReleaseHttpRequest(request);
 
 
 	OAuth2Factory::ReleaseDocument(json);
-	AccessTokenRequest::ReleaseAccessTokenRequest(tokenRequest);
+	//AccessTokenRequest::ReleaseAccessTokenRequest(tokenRequest);
 	
 
 	Http::Terminate();

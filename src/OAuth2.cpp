@@ -15,6 +15,7 @@
 #endif
 
 using namespace std;
+using namespace OAuth2CPP::Core;
 
 namespace OAuth2CPP {
 
@@ -48,7 +49,7 @@ namespace OAuth2CPP {
 		base64::encoder encoder;
 
 		sin << this->clientId << ":" << this->clientSecret;
-		sout << "Authorization: Basic ";
+		sout << OA2CPP_C_AUTH_BASIC;
 
 		encoder.encode(sin, sout);
 
@@ -56,12 +57,19 @@ namespace OAuth2CPP {
 	}
 
 
-	CodeGrant::AccessTokenRequest* OAuth2Factory::CodeGrant_GetAuthorizationRequest(CodeGrant::AuthenticationType type, c_string_ref code)
+	CodeGrant::AccessTokenRequest* OAuth2Factory::CodeGrant_GetAuthorizationRequest(c_string_ref code, CodeGrant::AuthenticationType type)
 	{
-		CodeGrant::AccessTokenRequest* tokenRequest = new CodeGrant::AccessTokenRequest(*this, type, code);
-
-		return tokenRequest;
+		return new CodeGrant::AccessTokenRequest(*this, code, type);
 	}
+
+
+	Request::HttpRequest* OAuth2Factory::GetHttpRequest(APITokens &tokens, Request::AuthenticationType type)
+	{
+		return new Request::HttpRequest(*this, tokens, type);
+	}
+
+
+	// static
 
 	void OAuth2Factory::ReleaseDocument(rapidjson::Document *doc)
 	{
@@ -147,9 +155,6 @@ namespace OAuth2CPP {
 		Http *httpClient = Http::GetInstance();
 		HttpResult* result = httpClient->Request(&factory->accessEP, HttpMethod::M_POST, this->body == NULL ? new EmptyHttpBody() : this->body, this->headers);
 		AuthorizationResponse response = AuthorizationResponse::E_INTERNAL;
-		//this->url->SetUrl(factory->accessEP);
-		//HttpResult* result = httpClient->Request(this->url, HttpMethod::M_POST, new EmptyHttpBody(), this->headers);
-		
 
 		if (result != NULL && result->IsCurlResponseOK())
 		{
@@ -214,7 +219,7 @@ namespace OAuth2CPP {
 				delete doc;
 		}
 
-		httpClient->releaseResult(result);
+		httpClient->ReleaseHttpResult(result);
 
 		return response;
 	}
@@ -229,7 +234,7 @@ namespace OAuth2CPP {
 
 	namespace CodeGrant {
 
-		AccessTokenRequest::AccessTokenRequest(const OAuth2Factory &factory, AuthenticationType authType, c_string_ref code, bool isRefreshToken)
+		AccessTokenRequest::AccessTokenRequest(const OAuth2Factory &factory, c_string_ref code, AuthenticationType authType, bool isRefreshToken)
 			: BaseAccessTokenRequest(factory)
 		{
 			// validate
@@ -327,5 +332,89 @@ namespace OAuth2CPP {
 		}
 
 	}
+
+
+
+	/********************************************************************************************
+	*
+	*	HttpRequest::HttpRequest
+	*
+	********************************************************************************************/
+
+	namespace Request {
+
+		HttpRequest::HttpRequest(const OAuth2Factory &factory, APITokens &tokens, AuthenticationType type)
+		{
+			this->tokens = &tokens;
+			this->authType = type;
+
+			if (this->authType == AuthenticationType::HEADER && !tokens.token_type.compare("Bearer") || !tokens.token_type.compare("bearer"))
+			{
+				stringstream ss;
+				ss << OA2CPP_C_AUTH_BEARER << tokens.access_token;
+
+				this->AddHeader(ss.str());
+			}
+			else{
+				this->authType = AuthenticationType::URI;
+				this->AddHeader("Cache-Control: no-store");
+			}
+		}
+
+
+		HttpRequest::~HttpRequest()
+		{
+			if (this->headers != NULL)
+				delete this->headers;
+		}
+
+
+
+		void HttpRequest::AddHeader(c_string_ref header)
+		{
+			if (this->headers == NULL)
+				this->headers = new vector<string>();
+
+			this->headers->push_back(header);
+		}
+
+
+		HttpResult* HttpRequest::Request(HttpURL &url, HttpMethod method, HttpBody *body)
+		{
+			Http *httpClient = Http::GetInstance();
+
+			if (this->authType == AuthenticationType::URI)
+				url.Add(OA2CPP_C_ACCESS_TOKEN, this->tokens->access_token);
+			
+			return httpClient->Request(&url, method, body, this->headers);
+		}
+
+		HttpResult* HttpRequest::Request(c_string_ref url, HttpMethod method, HttpBody *body)
+		{
+			Http *httpClient = Http::GetInstance();
+
+			HttpURL hURL;
+			hURL.SetUrl(url);
+
+			if (this->authType == AuthenticationType::URI)
+				hURL.Add(OA2CPP_C_ACCESS_TOKEN, this->tokens->access_token);
+
+			return httpClient->Request(&hURL, method, body, this->headers);
+		}
+
+
+		void HttpRequest::ReleaseHttpRequest(HttpRequest *request)
+		{
+			if (request != NULL)
+				delete request;
+		}
+		void HttpRequest::ReleaseHttpResult(HttpResult *result)
+		{
+			Http::ReleaseHttpResult(result);
+		}
+	}
+
+
+
 
 }
