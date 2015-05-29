@@ -15,7 +15,6 @@
 #endif
 
 using namespace std;
-using namespace rapidjson;
 
 namespace OAuth2CPP {
 
@@ -64,6 +63,12 @@ namespace OAuth2CPP {
 		return tokenRequest;
 	}
 
+	void OAuth2Factory::ReleaseDocument(rapidjson::Document *doc)
+	{
+		if (doc != NULL)
+			delete doc;
+	}
+
 
 	/********************************************************************************************
 	*
@@ -74,7 +79,7 @@ namespace OAuth2CPP {
 	AuthorizationBuilder::AuthorizationBuilder(const OAuth2Factory &factory)
 	{
 		this->url.SetUrl(factory.authrorizeEP);
-		this->url.Add(OA2CPP_C_AUTHORIZATION_CODE, OA2CPP_C_CODE);
+		this->url.Add(OA2CPP_C_RESPONSE_TYPE, OA2CPP_C_CODE);
 		this->url.Add(OA2CPP_C_CLIENT_ID, factory.clientId);
 	}
 
@@ -100,6 +105,13 @@ namespace OAuth2CPP {
 	string AuthorizationBuilder::GetUrl(void)
 	{
 		return this->url.toStr();
+	}
+
+
+	void AuthorizationBuilder::ReleaseAuthorizationBuilder(AuthorizationBuilder *builder)
+	{
+		if (builder != NULL)
+			delete builder;
 	}
 
 
@@ -130,31 +142,81 @@ namespace OAuth2CPP {
 		this->headers->push_back(header);
 	}
 
-	int BaseAccessTokenRequest::Ececute(void)
+	AuthorizationResponse BaseAccessTokenRequest::Execute(APITokens &tokens, rapidjson::Document **docOut)
 	{
-		int outCode = -1;
 		Http *httpClient = Http::GetInstance();
 		HttpResult* result = httpClient->Request(&factory->accessEP, HttpMethod::M_POST, this->body == NULL ? new EmptyHttpBody() : this->body, this->headers);
+		AuthorizationResponse response = AuthorizationResponse::E_INTERNAL;
+		//this->url->SetUrl(factory->accessEP);
+		//HttpResult* result = httpClient->Request(this->url, HttpMethod::M_POST, new EmptyHttpBody(), this->headers);
 		
 
 		if (result != NULL && result->IsCurlResponseOK())
 		{
-			outCode = result->statusCode;
+			rapidjson::Document *doc = new rapidjson::Document;
+			doc->Parse(result->ctx->memory);
 
-			Document doc;
-			doc.Parse(result->ctx->memory);
-
-			if (doc.IsObject())
+			if (doc->IsObject())
 			{
-				if (result->statusCode == 200)
+				if (result->statusCode != 200)
 				{
+					if (doc->HasMember("error") && (*doc)["error"].IsString())
+					{
+						string error = (*doc)["error"].GetString();
+
+						if (!error.compare("invalid_request"))
+							response = AuthorizationResponse::E_INVALID_REQUEST;
+
+						else if (!error.compare("invalid_client"))
+							response = AuthorizationResponse::E_INVALID_CLIENT;
+
+						else if (!error.compare("invalid_grant"))
+							response = AuthorizationResponse::E_INVALID_GRANT;
+
+						else if (!error.compare("unauthorized_client"))
+							response = AuthorizationResponse::E_UNAUTHORIZED_CLIENT;
+
+						else if (!error.compare("unsupported_grant_type"))
+							response = AuthorizationResponse::E_UNSUPPORTED_GRANT_TYPE;
+
+						else if (!error.compare("invalid_scope"))
+							response = AuthorizationResponse::E_INVALID_SCOPE;
+					}
+				}
+				else
+				{
+					if (doc->HasMember(OA2CPP_C_ACCESS_TOKEN) && (*doc)[OA2CPP_C_ACCESS_TOKEN].IsString()
+						&& doc->HasMember(OA2CPP_C_REFRESH_TOKEN) && (*doc)[OA2CPP_C_REFRESH_TOKEN].IsString())
+					{
+						tokens.access_token = (*doc)[OA2CPP_C_ACCESS_TOKEN].GetString();
+						tokens.refresh_token = (*doc)[OA2CPP_C_REFRESH_TOKEN].GetString();
+
+						response = (!tokens.refresh_token.empty() && !tokens.access_token.empty())
+										? AuthorizationResponse::OK
+										: AuthorizationResponse::E_MALFORMED_RESPONSE;
+
+						if (doc->HasMember(OA2CPP_C_TOKEN_TYPE) && (*doc)[OA2CPP_C_TOKEN_TYPE].IsString())
+							tokens.token_type = (*doc)[OA2CPP_C_TOKEN_TYPE].GetString();
+
+						if (doc->HasMember(OA2CPP_C_EXPIRES_IN) && (*doc)[OA2CPP_C_EXPIRES_IN].IsInt64())
+							tokens.expires_in = (*doc)[OA2CPP_C_EXPIRES_IN].GetInt64();
+					}
+				}
+
+				if (docOut != NULL)
+				{
+					*docOut = doc;
+					doc = NULL;
 				}
 			}
+
+			if (doc != NULL)
+				delete doc;
 		}
 
 		httpClient->releaseResult(result);
 
-		return outCode;
+		return response;
 	}
 
 
@@ -167,7 +229,7 @@ namespace OAuth2CPP {
 
 	namespace CodeGrant {
 
-		AccessTokenRequest::AccessTokenRequest(const OAuth2Factory &factory, AuthenticationType authType, c_string_ref code)
+		AccessTokenRequest::AccessTokenRequest(const OAuth2Factory &factory, AuthenticationType authType, c_string_ref code, bool isRefreshToken)
 			: BaseAccessTokenRequest(factory)
 		{
 			// validate
@@ -190,9 +252,19 @@ namespace OAuth2CPP {
 
 			this->urlEncBody = new URLEncodedHttpBody();
 			this->body = this->urlEncBody;
+			//this->urlEncBody = new HttpURL;
+			//this->url = this->urlEncBody;
 
-			this->urlEncBody->AddParam(OA2CPP_C_GRANT_TYPE, OA2CPP_C_AUTHORIZATION_CODE);
-			this->urlEncBody->AddParam(OA2CPP_C_CODE, code);
+			if (isRefreshToken)
+			{
+				this->urlEncBody->Add(OA2CPP_C_GRANT_TYPE, OA2CPP_C_REFRESH_TOKEN);
+				this->urlEncBody->Add(OA2CPP_C_REFRESH_TOKEN, code);
+			}
+			else
+			{
+				this->urlEncBody->Add(OA2CPP_C_GRANT_TYPE, OA2CPP_C_AUTHORIZATION_CODE);
+				this->urlEncBody->Add(OA2CPP_C_CODE, code);
+			}
 
 			switch (authType)
 			{
@@ -201,11 +273,11 @@ namespace OAuth2CPP {
 				break;
 
 			case AuthenticationType::CLIENT_ID_AND_SECRET:
-				this->urlEncBody->AddParam(OA2CPP_C_CLIENT_SECRET, factory.clientSecret);
+				this->urlEncBody->Add(OA2CPP_C_CLIENT_SECRET, factory.clientSecret);
 				
 				// fall-through
 			case AuthenticationType::CLIENT_ID:
-				this->urlEncBody->AddParam(OA2CPP_C_CLIENT_ID, factory.clientId);
+				this->urlEncBody->Add(OA2CPP_C_CLIENT_ID, factory.clientId);
 				break;
 			}
 		}
@@ -220,32 +292,40 @@ namespace OAuth2CPP {
 			}
 		}
 
+		void AccessTokenRequest::SetScope(c_string_ref scope)
+		{
+			this->urlEncBody->Add(OA2CPP_C_SCOPE, scope);
+		}
+
 		void AccessTokenRequest::SetRedirectURI(c_string_ref uri)
 		{
-			this->urlEncBody->AddParam(OA2CPP_C_REDIRECT_URI, uri);
+			this->urlEncBody->Add(OA2CPP_C_REDIRECT_URI, uri);
 		}
 
 
 		void AccessTokenRequest::AddVar(c_string_ref key, c_string_ref value)
 		{
-			this->urlEncBody->AddParam(key, value);
+			this->urlEncBody->Add(key, value);
 		}
 
 		void AccessTokenRequest::AddVar(c_char_ptr key, c_string_ref value)
 		{
-			this->urlEncBody->AddParam(key, value);
+			this->urlEncBody->Add(key, value);
 		}
 
 		void AccessTokenRequest::AddVar(c_char_ptr key, c_char_ptr value)
 		{
-			this->urlEncBody->AddParam(key, value);
+			this->urlEncBody->Add(key, value);
 		}
 
 
-		//void AccessTokenRequest::Execute(void)
-		//{
-		//	//string params = this->urlEncBody.toStr();
-		//}
+
+		void AccessTokenRequest::ReleaseAccessTokenRequest(AccessTokenRequest* request)
+		{
+			if (request != NULL)
+				delete request;
+		}
+
 	}
 
 }

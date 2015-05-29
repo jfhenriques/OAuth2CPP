@@ -140,9 +140,9 @@ namespace OAuth2CPP {
 		URLEncodedHttpBody();
 		~URLEncodedHttpBody();
 
-		void AddParam(c_string_ref key, c_string_ref value);
-		void AddParam(c_char_ptr key, c_string_ref value);
-		void AddParam(c_char_ptr key, c_char_ptr value);
+		void Add(c_string_ref key, c_string_ref value);
+		void Add(c_char_ptr key, c_string_ref value);
+		void Add(c_char_ptr key, c_char_ptr value);
 
 		void Prepare(CurlCTX *ctx = NULL);
 

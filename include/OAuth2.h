@@ -21,6 +21,11 @@ using namespace std;
 #define OA2CPP_C_STATE				"state"
 #define OA2CPP_C_GRANT_TYPE			"grant_type"
 #define OA2CPP_C_CODE				"code"
+#define OA2CPP_C_REFRESH_TOKEN		"refresh_token"
+#define OA2CPP_C_ACCESS_TOKEN		"access_token"
+#define OA2CPP_C_TOKEN_TYPE			"token_type"
+#define OA2CPP_C_EXPIRES_IN			"expires_in"
+#define OA2CPP_C_RESPONSE_TYPE		"response_type"
 
 
 
@@ -45,8 +50,8 @@ namespace OAuth2CPP {
 	{
 		string refresh_token;
 		string access_token;
-		string type;
-		long expires;
+		string token_type;
+		long expires_in = -1;
 	} APITokens;
 
 
@@ -75,6 +80,8 @@ namespace OAuth2CPP {
 
 		AuthorizationBuilder* GetAuthorizationBuilder();
 		CodeGrant::AccessTokenRequest* CodeGrant_GetAuthorizationRequest(CodeGrant::AuthenticationType type, c_string_ref code);
+
+		static void ReleaseDocument(rapidjson::Document *doc);
 	};
 
 
@@ -98,15 +105,30 @@ namespace OAuth2CPP {
 		void AddGenericVar(c_string_ref key, c_string_ref value);
 
 		string GetUrl(void);
+
+		static void ReleaseAuthorizationBuilder(AuthorizationBuilder *builder);
 	};
 
 
+	typedef OAUTH2CPP_API enum {
+		OK = 0,
+		E_INTERNAL,
+		E_MALFORMED_RESPONSE,
+		E_INVALID_REQUEST,
+		E_INVALID_CLIENT,
+		E_INVALID_GRANT,
+		E_UNAUTHORIZED_CLIENT,
+		E_UNSUPPORTED_GRANT_TYPE,
+		E_INVALID_SCOPE,
+		E_OTHER
+	} AuthorizationResponse;
 
 	class OAUTH2CPP_API BaseAccessTokenRequest {
 	
 	protected:
 		const OAuth2Factory *factory = NULL;
 		HttpBody *body = NULL;
+		HttpURL *url = NULL;
 		vector<string> *headers = NULL;
 
 		BaseAccessTokenRequest(const OAuth2Factory &factory);
@@ -120,7 +142,7 @@ namespace OAuth2CPP {
 
 		virtual void AddHeader(c_string_ref header);
 
-		int Ececute(void);
+		AuthorizationResponse Execute(APITokens &tokens, rapidjson::Document **docOut = NULL);
 	};
 
 
@@ -138,21 +160,23 @@ namespace OAuth2CPP {
 			friend class OAuth2Factory;
 
 		private:
-			URLEncodedHttpBody *urlEncBody;
+			URLEncodedHttpBody *urlEncBody = NULL;
+			//HttpURL *urlEncBody = NULL;
 
 		private:
-			AccessTokenRequest(const OAuth2Factory &factory, AuthenticationType authType, c_string_ref code);
+			AccessTokenRequest(const OAuth2Factory &factory, AuthenticationType authType, c_string_ref code, bool isRefreshToken = false);
 
 		public:
 			~AccessTokenRequest();
 
 			void SetRedirectURI(c_string_ref uri);
+			void SetScope(c_string_ref scope);
 
 			void AddVar(c_string_ref key, c_string_ref value);
 			void AddVar(c_char_ptr key, c_string_ref value);
 			void AddVar(c_char_ptr key, c_char_ptr value);
 
-			//void Execute(void);
+			static void ReleaseAccessTokenRequest(AccessTokenRequest* request);
 
 		};
 	}

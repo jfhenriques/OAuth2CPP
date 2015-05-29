@@ -20,34 +20,36 @@ int main(void)
 
 	Http::Init();
 
-	char * str = "{\"error\": \"unsupported_grant_type\"}";
-	Document doc;
-	doc.Parse(str);
-	if (doc.IsObject())
-	{
-		cout << "aa";
-
-	}
-
 	OAuth2Factory factory(
 			"https://meocloud.pt/oauth2/authorize",
 			"https://meocloud.pt/oauth2/token",
-			"123456789", "aaaaa");
+			"aaa",
+			"bbb");
 
 	AuthorizationBuilder *builder = factory.GetAuthorizationBuilder();
-	builder->SetRedirectURI("oob");
+	//builder->SetRedirectURI("oob");
 
-	string a = builder->GetUrl();
+	string url = builder->GetUrl();
 
+	cout << url << endl;
+
+	AuthorizationBuilder::ReleaseAuthorizationBuilder(builder);
+
+	APITokens tokens;
+	rapidjson::Document *json = NULL;
+
+	string authcode = "abc";
 	
-	AccessTokenRequest *tokenRequest = factory.CodeGrant_GetAuthorizationRequest(AuthenticationType::CLIENT_ID_AND_SECRET, "sasdasd");
+	AccessTokenRequest *tokenRequest = factory.CodeGrant_GetAuthorizationRequest(AuthenticationType::CLIENT_ID_AND_SECRET_BASIC_AUTH, authcode);
 
-	int code = tokenRequest->Ececute();
+	tokenRequest->SetRedirectURI("oob");
+
+	AuthorizationResponse response = tokenRequest->Execute(tokens, &json);
 
 
-
-	delete builder;
-	delete tokenRequest;
+	OAuth2Factory::ReleaseDocument(json);
+	AccessTokenRequest::ReleaseAccessTokenRequest(tokenRequest);
+	
 
 	Http::Terminate();
 

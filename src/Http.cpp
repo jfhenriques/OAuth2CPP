@@ -216,25 +216,6 @@ namespace OAuth2CPP {
 	********************************************************************************************/
 
 
-	//class URLEncodedHttpBody: virtual public HttpBody
-	//{
-	//private:
-	//	long size;
-	//	c_str data;
-	//	size_t readPtr;
-	//	HttpParameters params;
-	//public:
-	//	URLEncodedHttpBody();
-
-	//	void AddParam(c_str key, c_str value);
-	//	void Build(CURL* cInstance = NULL, curl_slist *Hlist = NULL);
-
-	//	bool IsChunked();
-	//	bool HasSize();
-	//	long Size();
-	//	size_t ReadCallback(void *ptr, size_t size, size_t nmemb);
-	//};
-
 	URLEncodedHttpBody::URLEncodedHttpBody()
 	{
 		this->data = NULL;
@@ -243,20 +224,18 @@ namespace OAuth2CPP {
 	}
 	URLEncodedHttpBody::~URLEncodedHttpBody()
 	{
-		if (this->data != NULL)
-			delete[] this->data;
 	}
 
 
-	void URLEncodedHttpBody::AddParam(c_string_ref key, c_string_ref value)
+	void URLEncodedHttpBody::Add(c_string_ref key, c_string_ref value)
 	{
 		this->params.Add(key, value);
 	}
-	void URLEncodedHttpBody::AddParam(c_char_ptr key, c_string_ref value)
+	void URLEncodedHttpBody::Add(c_char_ptr key, c_string_ref value)
 	{
 		this->params.Add(key, value);
 	}
-	void URLEncodedHttpBody::AddParam(c_char_ptr key, c_char_ptr value)
+	void URLEncodedHttpBody::Add(c_char_ptr key, c_char_ptr value)
 	{
 		this->params.Add(key, value);
 	}
@@ -265,13 +244,12 @@ namespace OAuth2CPP {
 	{
 		if (this->data != NULL)
 		{
-			delete[] this->data;
-
-			this->data = NULL;
 			this->size = 0;
 			this->readPtr = 0;
 			this->tmpData = string();
 		}
+
+		this->data = NULL;
 
 		this->params.SetCTX(ctx);
 
@@ -488,7 +466,9 @@ namespace OAuth2CPP {
 			{
 				if (method != HttpMethod::M_PUT || body->Size() == 0)
 				{
-					contentLength = "Content-Length: " + body->Size();
+					stringstream ss;
+					ss << "Content-Length: " << body->Size();
+					contentLength = ss.str();
 					ctx->headers = curl_slist_append(ctx->headers, contentLength.c_str());
 				}
 
