@@ -257,8 +257,6 @@ namespace OAuth2CPP {
 
 			this->urlEncBody = new URLEncodedHttpBody();
 			this->body = this->urlEncBody;
-			//this->urlEncBody = new HttpURL;
-			//this->url = this->urlEncBody;
 
 			if (isRefreshToken)
 			{

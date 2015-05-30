@@ -17,8 +17,8 @@ using namespace rapidjson;
 int main(void)
 {
 
-	Http::USER_AGENT = "Oauth2-dev/0.1";
 	Http::SetDebug(true);
+	Http::SetUserAgent("Oauth2-dev/0.1");
 
 	Http::Init();
 
@@ -53,9 +53,7 @@ int main(void)
 	//cout << OA2CPP_C_TOKEN_TYPE << ":" << tokens.token_type << endl;
 	//cout << OA2CPP_C_EXPIRES_IN << ":" << tokens.expires_in << endl;
 
-	APITokens tokenss;
-
-	HttpRequest *request = factory.GetHttpRequest(tokenss);
+	HttpRequest *request = factory.GetHttpRequest(tokens);
 
 	HttpResult *result = request->Request("https://publicapi.meocloud.pt/1/Account/Info");
 

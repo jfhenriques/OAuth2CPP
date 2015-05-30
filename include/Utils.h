@@ -17,6 +17,10 @@
 //
 //#include <string>
 
+#ifdef OAUTH2CPP_STATICLIB
+#   define OAUTH2CPP_API
+#	define EXPIMP_TEMPLATE
+#else
 
 #ifdef OAUTH2CPP_EXPORT
 #   define OAUTH2CPP_API   __declspec(dllexport)
@@ -25,6 +29,8 @@
 #   define OAUTH2CPP_API   __declspec(dllimport)
 #	define EXPIMP_TEMPLATE extern
 #endif 
+
+#endif
 
 #include <string>
 EXPIMP_TEMPLATE template class OAUTH2CPP_API std::basic_string< char, std::char_traits<char>, std::allocator<char> >;

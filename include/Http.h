@@ -191,6 +191,7 @@ namespace OAuth2CPP {
 			static void Terminate(void);
 
 			static void SetDebug(bool debug);
+			static void SetUserAgent(string userAgent);
 
 			static Http* GetInstance(void);
 

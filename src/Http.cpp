@@ -313,7 +313,6 @@ namespace OAuth2CPP {
 		bool Http::debug = false;
 
 
-
 		static HttpResult* getHttpResult()
 		{
 			HttpResult *result = new HttpResult();
@@ -568,6 +567,11 @@ namespace OAuth2CPP {
 			}
 		}
 
+
+		void Http::SetUserAgent(string userAgent)
+		{
+			Http::USER_AGENT = userAgent;
+		}
 
 
 
