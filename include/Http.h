@@ -62,7 +62,9 @@ namespace OAuth2CPP {
 		private:
 			std::map<string, string> *params = NULL;
 			string url;
-			CurlCTX* ctx = NULL;
+			//CurlCTX* ctx = NULL;
+			CURL* curl = NULL;
+			bool uCurl = false;
 
 		private:
 			void checkParamsMap(void);
@@ -76,7 +78,8 @@ namespace OAuth2CPP {
 			void Add(c_char_ptr key, c_string_ref param);
 			void Add(c_char_ptr key, c_char_ptr param);
 			void SetUrl(c_string_ref url);
-			void SetCTX(CurlCTX *ctx);
+			//void SetCTX(CurlCTX *ctx);
+			void SetCURL(CURL* curl);
 
 			string toStr();
 

@@ -6,6 +6,8 @@
 #include <sstream>
 #include <rapidjson\rapidjson.h>
 #include <rapidjson\document.h>
+#include <time.h>
+#include <windows.h>
 
 using namespace OAuth2CPP;
 using namespace OAuth2CPP::Core;
@@ -14,6 +16,34 @@ using namespace OAuth2CPP::Request;
 using namespace base64;
 using namespace rapidjson;
 
+
+double PCFreq = 0.0;
+__int64 CounterStart = 0;
+
+
+void StartCounter()
+{
+	LARGE_INTEGER li;
+
+	if (!QueryPerformanceFrequency(&li))
+		cout << "QueryPerformanceFrequency failed!\n";
+
+	// Micros
+	PCFreq = double(li.QuadPart) / 1000.0;
+	// Nanos
+	//PCFreq = double(li.QuadPart) / 1000000.0;
+
+	QueryPerformanceCounter(&li);
+	CounterStart = li.QuadPart;
+}
+double GetCounter()
+{
+	LARGE_INTEGER li;
+	QueryPerformanceCounter(&li);
+	return double(li.QuadPart - CounterStart) / PCFreq;
+}
+
+
 int main(void)
 {
 
@@ -21,6 +51,7 @@ int main(void)
 	Http::SetUserAgent("Oauth2-dev/0.1");
 
 	Http::Init();
+
 
 	OAuth2Factory factory(
 			"https://meocloud.pt/oauth2/authorize",

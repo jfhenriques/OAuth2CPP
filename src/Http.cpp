@@ -27,6 +27,8 @@ namespace OAuth2CPP {
 		{
 			if (this->params != NULL)
 				delete this->params;
+			
+			this->SetCURL(NULL);
 		}
 
 
@@ -60,9 +62,21 @@ namespace OAuth2CPP {
 		{
 			this->url = url;
 		}
-		void HttpParameters::SetCTX(CurlCTX *ctx)
+		//void HttpParameters::SetCTX(CurlCTX *ctx)
+		//{
+		//	if (this->uCtx && this->ctx != NULL)
+		//		curl_easy_cleanup(this->ctx);
+
+		//	this->uCtx = false;
+		//	this->ctx = ctx;
+		//}
+		void HttpParameters::SetCURL(CURL* curl)
 		{
-			this->ctx = ctx;
+			if (this->uCurl && this->curl != NULL)
+				curl_easy_cleanup(this->curl);
+
+			this->uCurl = false;
+			this->curl = curl;
 		}
 
 		string HttpParameters::toStr()
@@ -70,27 +84,19 @@ namespace OAuth2CPP {
 			if (this->params == NULL || this->params->size() <= 0)
 				return this->url;
 
-			bool hadCurl;
-			CURL *curlPtr = NULL;
-			char *tmp;
-
-			vector<char*> escList;
-			stringstream ss;
+			char *tmp = NULL;
 			bool isFirst = true;
-			string outStr;
+			stringstream ss;
+			
 
-			if (this->ctx != NULL && this->ctx->curl != NULL)
+			if (this->curl == NULL )
 			{
-				hadCurl = true;
-				curlPtr = this->ctx->curl;
-			}
-			else
-			{
-				hadCurl = false;
-				curlPtr = curl_easy_init();
+				this->curl = curl_easy_init();
 
-				if (!curlPtr)
+				if (this->curl == NULL)
 					throw OAUTH2CPP_ERROR_HTTP;
+
+				this->uCurl = true;
 			}
 
 			if (!this->url.empty())
@@ -103,10 +109,8 @@ namespace OAuth2CPP {
 				if (it->first.length() == 0) continue;
 
 				// Key
-				tmp = curl_easy_escape(curlPtr, it->first.c_str(), 0);
+				tmp = curl_easy_escape(this->curl, it->first.c_str(), 0);
 				if (tmp == NULL) continue;
-
-				escList.push_back(tmp);
 
 				if (isFirst)
 					isFirst = false;
@@ -114,33 +118,22 @@ namespace OAuth2CPP {
 				else
 					ss << "&";
 
-				ss << (string)tmp;
+				ss << tmp;
+				curl_free(tmp);
 
 
 				// value
 
 				if (it->second.length() == 0) continue;
 
-				tmp = curl_easy_escape(curlPtr, it->second.c_str(), 0);
+				tmp = curl_easy_escape(this->curl, it->second.c_str(), 0);
 				if (tmp == NULL) continue;
 
-				escList.push_back(tmp);
-
-				ss << "=" << (string)tmp;
+				ss << "=" << tmp;
+				curl_free(tmp);
 			}
 
-			outStr = ss.str();
-
-			// cleanup
-			for (vector<char*>::iterator it = escList.begin(); it != escList.end(); it++)
-			{
-				curl_free(*it);
-			}
-
-			if (!hadCurl)
-				curl_easy_cleanup(curlPtr);
-
-			return outStr;
+			return ss.str();
 		}
 
 
@@ -250,7 +243,7 @@ namespace OAuth2CPP {
 
 			this->data = NULL;
 
-			this->params.SetCTX(ctx);
+			this->params.SetCURL(ctx->curl);
 
 			this->tmpData = this->params.toStr();
 
@@ -484,11 +477,11 @@ namespace OAuth2CPP {
 
 			if (url != NULL)
 			{
-				url->SetCTX(ctx);
+				url->SetCURL(ctx->curl);
 
 				result->url = url->toStr();
 
-				url->SetCTX(NULL);
+				url->SetCURL(NULL);
 			}
 			else if (urlStr != NULL)
 			{
